@@ -1,16 +1,28 @@
 #! /usr/bin/env bash
-#===============================================================================================================
-# Author: Nebu Mathews mail-to: nebupm@gmail.com
-#===============================================================================================================
-#   This script will monitor the progress of each migration. Cold or Live.
-#
-# Argument 1 (Mandatory) : Instance ID of the instance getting migrated.
-#
-# Usage Example:
-#	 ./migration_status.sh <Instance ID>
-#
-#===============================================================================================================
-# Function to log message on logfile. This is introduced to have a uniform logging format.
+
+#============================================================================#
+# This script will monitor the progress of each migration. Cold or Live.     #
+#                                                                            #
+# Argument 1 (Mandatory) : Instance ID of the instance getting migrated.     #
+#                                                                            #
+# ./migration_status.sh <Instance ID>                                        #
+#                                                                            #
+#                                                                            #
+#  Copyright (C) 2020  Nebu Mathews                                          #
+#                                                                            #
+#  This program is free software: you can redistribute it and/or modify      #
+#  it under the terms of the GNU General Public License as published by      #
+#  the Free Software Foundation, either version 3 of the License, or         #
+#  (at your option) any later version.                                       #
+#  This program is distributed in the hope that it will be useful,           #
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+#  GNU General Public License for more details.                              #
+#                                                                            #
+#  You should have received a copy of the GNU General Public License         #
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.    #
+#============================================================================#
+
 function logmessage () {
     echo -e "`date \"+[%Y-%m-%d %H:%M:%S]\"`[$SCRIPTNAME]:$@"
 }

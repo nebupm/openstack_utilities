@@ -1,22 +1,41 @@
 #! /usr/bin/env bash
-#===============================================================================================================
-# Author: Nebu Mathews mail-to: nebupm@gmail.com
-#===============================================================================================================
-# This script will live migrate all ACTIVE instances from this host. This will achieve a result similat to
-# nova evacuate command, however, this is more controlled and the user has the freedon to stop the migration
-# but breaking the script execution and do required actions before resuming again.
-# This script also depends on migration_status.sh script, it is used to monitor the progress of migration
-# It will be polling nova migration list and getting an upto date status every 5 seconds.
-#
-# Argument 1 (Mandatory) : FQDN of the compute host.
-# Argument 2 (Optional) : Number of seconds to wait between migrations,. Default : 60 seconds.
-# Argument 3 (Optional) : List of instances to exclude from the migration. Example "Prod|master|Customer1". Default : No exclusion.
-#
-#	 ./live_migrate_instances.sh <Compute Host name with domain suffix> 15 "Prod|master|Customer1"
-# You can extract this name from the following openstack.
-# openstack scompute service list --service nova-compute
-#
-#===============================================================================================================
+
+#============================================================================#
+# This script will live migrate all ACTIVE instances from this host. This    #
+# will achieve a result similar to nova evacuate command, however, this is   #
+# more controlled and the user has the freedon to stop the migration but     #
+# breaking the script execution and do required actions before resuming      #
+# again. This script also depends on migration_status.sh script, it is used  #
+# to monitor the progress of migration. It will be polling nova migration    #
+# list and getting an upto date status every 5 seconds.                      #
+#                                                                            #
+# Argument 1 (Mandatory) : FQDN of the compute host.                         #
+# Argument 2 (Optional) : Number of seconds to wait between migrations.      #
+#                         Default : 60 seconds.                              #
+# Argument 3 (Optional) : List of instances to exclude from the migration.   #
+#                         Example "Prod|master|Customer1".                   #
+#                         Default : No exclusion.                            #
+#                                                                            #
+# ./live_migrate_instances.sh <Compute Host name> 15 "Prod|master|Customer1" #
+# You can extract this name from the following openstack.                    #
+# openstack scompute service list --service nova-compute                     #
+#                                                                            #
+#                                                                            #
+#  Copyright (C) 2020  Nebu Mathews                                          #
+#                                                                            #
+#  This program is free software: you can redistribute it and/or modify      #
+#  it under the terms of the GNU General Public License as published by      #
+#  the Free Software Foundation, either version 3 of the License, or         #
+#  (at your option) any later version.                                       #
+#  This program is distributed in the hope that it will be useful,           #
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+#  GNU General Public License for more details.                              #
+#                                                                            #
+#  You should have received a copy of the GNU General Public License         #
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.    #
+#============================================================================#
+
 function WaitForNSeconds(){
   if [[ -z "$1" ]]; then
     ITER=1
