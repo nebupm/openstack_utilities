@@ -7,7 +7,6 @@
 #                                                                            #
 # ./migration_status.sh <Instance ID>                                        #
 #                                                                            #
-#                                                                            #
 #  Copyright (C) 2020  Nebu Mathews                                          #
 #                                                                            #
 #  This program is free software: you can redistribute it and/or modify      #

@@ -20,7 +20,6 @@
 # You can extract this name from the following openstack.                    #
 # openstack scompute service list --service nova-compute                     #
 #                                                                            #
-#                                                                            #
 #  Copyright (C) 2020  Nebu Mathews                                          #
 #                                                                            #
 #  This program is free software: you can redistribute it and/or modify      #
