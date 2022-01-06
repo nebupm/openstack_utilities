@@ -1,52 +1,26 @@
 #! /usr/bin/env bash
-
-#============================================================================#
-# This script will monitor the progress of each migration. Cold or Live.     #
-#                                                                            #
-# Argument 1 (Mandatory) : Instance ID of the instance getting migrated.     #
-#                                                                            #
-# ./migration_status.sh <Instance ID>                                        #
-#                                                                            #
-#  Copyright (C) 2020  Nebu Mathews                                          #
-#                                                                            #
-#  This program is free software: you can redistribute it and/or modify      #
-#  it under the terms of the GNU General Public License as published by      #
-#  the Free Software Foundation, either version 3 of the License, or         #
-#  (at your option) any later version.                                       #
-#  This program is distributed in the hope that it will be useful,           #
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of            #
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
-#  GNU General Public License for more details.                              #
-#                                                                            #
-#  You should have received a copy of the GNU General Public License         #
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.    #
-#============================================================================#
-
-function logmessage () {
-    echo -e "`date \"+[%Y-%m-%d %H:%M:%S]\"`[$SCRIPTNAME]:$@"
-}
-
-function logerrorstatus() {
-    RETURNCODE=$?
-    if [[ $RETURNCODE  -ne 0 ]]; then
-        logmessage "[$FUNCNAME][$RETURNCODE]: ${@}"
-        exit 1
-    fi
-}
-function script_interrupt(){
-    logmessage "[$FUNCNAME] : User Entered CTRL-C"
-    exit 1
-}
-
+#===============================================================================================================
+# Author: Nebu Mathews, Project: Openstack, Repo: overcloud-management mail-to: nmathews@ukcloud.com
+#===============================================================================================================
+#This script will cold migrate all SHUTOFF instances from this host.
+#
+# Argument 1 (Mandatory) : Instance ID of the instance getting migrated.
+#
+# Usage Example:
+#	 ./migration_status.sh <Instance ID>
+#
+#===============================================================================================================
 function script_exit(){
-    logmessage "[$INSTANCE_NAME][$INSTANCE_ID]: After Migration."  |& tee -a $CWD/"$NODE_FQDN"_migration.log
-    openstack server show $INSTANCE_ID  |& tee -a $CWD/"$NODE_FQDN"_migration.log
-    rm -f $MIGRATION_DATA_FILE
-    logmessage "##############################################################"  |& tee -a $CWD/"$NODE_FQDN"_migration.log
+    if [[ ! -z $INSTANCE_ID ]]; then
+        log_info_message "[$INSTANCE_NAME][$INSTANCE_ID]: After Migration."  |& tee -a $CWD/"$NODE_FQDN"_migration.log
+        openstack server show $INSTANCE_ID  |& tee -a $CWD/"$NODE_FQDN"_migration.log
+        rm -f $MIGRATION_DATA_FILE
+        log_info_message "##############################################################"  |& tee -a $CWD/"$NODE_FQDN"_migration.log
+    fi
 }
 
 function poll_live_migration(){
-    logmessage "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Getting $MIGRATION_TYPE migration details."
+    log_info_message "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Getting $MIGRATION_TYPE migration details."
     MIGRATION_DATA_FILE=/tmp/$MIGRATION_TYPE.$INSTANCE_ID.$NODE_FQDN
     echo $HEADER
     while true; do
@@ -67,7 +41,7 @@ function poll_live_migration(){
                 fi
                 if [[ $COUNT -ge $RETRIES ]]; then
                     (exit 1)
-                    logerrorstatus "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Exceeded $RETRIES retries. Exiting now."
+                    log_error_and_exit "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Exceeded $RETRIES retries. Exiting now."
                 fi
                 COUNT=$((COUNT+1))
                 sleep 6
@@ -87,22 +61,22 @@ function poll_live_migration(){
 }
 
 function poll_cold_migration(){
-    logmessage "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Getting $MIGRATION_TYPE migration details."
+    log_info_message "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Getting $MIGRATION_TYPE migration details."
     MIGRATION_DATA_FILE=/tmp/$MIGRATION_TYPE.$INSTANCE_ID.$NODE_FQDN
     nova migration-list --host $NODE_FQDN | grep $INSTANCE_ID | grep migrating | sed "s|\ ||g" > $MIGRATION_DATA_FILE 2>&1
     MIGRATION_ID=$(awk -F "|" '{print $2}' $MIGRATION_DATA_FILE)
     if [[ -z $MIGRATION_ID ]]; then
-        logmessage "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Migration finished or Its not running."
+        log_info_message "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Migration finished or Its not running."
         return
     fi
     echo $HEADER
     while true; do
         nova migration-list --host $NODE_FQDN | grep $INSTANCE_ID | grep $MIGRATION_ID | sed "s|\ ||g" > $MIGRATION_DATA_FILE 2>&1
         DATETIME=$(date '+%Y-%m-%dT%H:%M:%S.%N')
-        STATUS=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $8}')
-        SOURCE_NODE=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $3}')
-        DESTINATION_NODE=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $4}')
-        UPDATED_AT=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $13}' | awk -F "." '{print $1}')
+        SOURCE_NODE=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $4}')
+        DESTINATION_NODE=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $5}')
+        STATUS=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $9}')
+        UPDATED_AT=$(grep $MIGRATION_ID $MIGRATION_DATA_FILE | grep $INSTANCE_ID | awk -F "|" '{print $14}' | awk -F "." '{print $1}')
         echo "$DATETIME,$MIGRATION_ID,$INSTANCE_ID,$SOURCE_NODE -> $DESTINATION_NODE,Mem:NAN,Disk:NAN,$STATUS,$UPDATED_AT"
         if [[ $STATUS =~ "finished" ]]; then
             rm -f $MIGRATION_DATA_FILE
@@ -113,34 +87,34 @@ function poll_cold_migration(){
 }
 
 function main() {
-    logmessage "[Before Migration]: ID=$INSTANCE_ID, Name=$INSTANCE_NAME, HOST=$NODE_FQDN"
+    log_info_message "[Before Migration]: ID=$INSTANCE_ID, Name=$INSTANCE_NAME, HOST=$NODE_FQDN"
     openstack server show $INSTANCE_ID
     COUNT=1
     while true; do
         MIGRATION_ID=$(nova server-migration-list $INSTANCE_ID | grep "|" | awk -F "|" '{print $2}' | grep -v "Id" | sed s/\ //g)
-        logmessage "[$INSTANCE_NAME][$INSTANCE_ID]: Getting migration ID [$MIGRATION_ID]."
+        log_info_message "[$INSTANCE_NAME][$INSTANCE_ID]: Getting migration ID [$MIGRATION_ID]."
         if [[ -z "$MIGRATION_ID" ]]; then
-                logmessage "[$INSTANCE_NAME][$INSTANCE_ID]: Checking the status of migration"
+                log_info_message "[$INSTANCE_NAME][$INSTANCE_ID]: Checking the status of migration"
                 STATUS=$(openstack server show -c status -f value  $INSTANCE_ID | tr '[:upper:]' '[:lower:]')
                 if [[ "$STATUS" =~ "error" ]]; then
                     (exit 1)
-                    logerrorstatus "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Live migration failed."
+                    log_error_and_exit "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Live migration failed."
                 elif [[ "$STATUS" =~ "migrating" ]]; then
-                    logmessage "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Live migration started."
+                    log_info_message "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Live migration started."
                     if [[ $COUNT -ge $RETRIES ]]; then
                         (exit 1)
-                        logerrorstatus "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Exceeded $RETRIES retries."
+                        log_error_and_exit "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Exceeded $RETRIES retries."
                     fi
                 elif [[ "$STATUS" =~ "active" ]]; then
                     (exit 1)
-                    logerrorstatus "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Migration might be finished."
+                    log_error_and_exit "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Migration might be finished."
                 elif [[ "$STATUS" =~ "resize" ]]; then
-                    logmessage "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Cold migration"
+                    log_info_message "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Cold migration"
                     MIGRATION_TYPE=cold
                     break
                 else
                    (exit 1)
-                   logerrorstatus "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Unknown status."
+                   log_error_and_exit "[$INSTANCE_NAME][$INSTANCE_ID][$STATUS]: Unknown status."
                 fi
         else
             STATUS=$(openstack server show -c status -f value  $INSTANCE_ID | tr '[:upper:]' '[:lower:]')
@@ -150,37 +124,38 @@ function main() {
         COUNT=$((COUNT+1))
     done    
     poll_"$MIGRATION_TYPE"_migration
+    openstack server show $INSTANCE_ID
 }
 
 #------------------------------------------------------------
 # Main program execution start here.
 #------------------------------------------------------------
-SCRIPTNAME=`basename $0`
-CWD=~
-#trap 'script_exit $@' EXIT
+source $(dirname $0)/logger.sh
 trap script_exit EXIT
 trap script_interrupt SIGINT
+FULL_PATH=$(realpath $0)
+SCRIPTNAME=$(basename $FULL_PATH)
+
+CWD=~
 
 RETRIES=10
 if [[ $# -eq 0 ]]; then
-        logmessage "Usage: $0 <Instance ID>"
-        exit 1
+    (exit 1)
+    log_error_and_exit "Usage: $0 <Instance ID>"
+fi
+
+if [[ $1 == "--help" ]]; then
+    (exit 1)
+    log_error_and_exit "Usage: $0 <Instance ID>"
 fi
 
 if [[ -z $OS_AUTH_URL ]]; then
-        (exit 1)
-        logmessage "Source your rc file once before running this script"
-        logmessage "Press any key..."
-        read user_input
-        exit 1
+    (exit 1)
+    log_error_and_exit "Source your rc file once before running this script"
 fi
 
 INSTANCE_ID=$1
 NODE_DETAILS=$(openstack server show -c OS-EXT-SRV-ATTR:hypervisor_hostname -c name $INSTANCE_ID -f value)
-if [[ -z NODE_DETAILS ]]; then
-    (exit 1)
-    logerrorstatus "Couldnot get the details of the hypervisor server. Cannot continue."
-fi
 NODE_FQDN=$(echo "$NODE_DETAILS" | head -1)
 INSTANCE_NAME=$(echo "$NODE_DETAILS" | tail -1)
 HEADER="DATETIME,MIGRATION_ID,INSTANCE_ID,SOURCE_NODE -> DESTINATION_NODE,MEMORY_REMAINING_BYTES,DISK_REMAINING_BYTES,STATUS,UPDATED"

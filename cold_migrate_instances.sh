@@ -1,31 +1,15 @@
 #! /usr/bin/env bash
-
-#============================================================================#
-#  This script will cold migrate all SHUTOFF instances from this host.       #
-# Argument 1 (Mandatory) : FQDN of the compute host.                         #
-# Argument 2 (Optional) : Number of seconds to wait between migrations.      #
-#                         Default : 60 seconds.                              #
-#                                                                            #
-# Usage Example:                                                             #
-#	 ./cold_migrate_instances.sh <Compute Host name with domain suffix> 30   #
-# You can extract this name from the following openstack.                    #
-# openstack scompute service list --service nova-compute                     #
-#                                                                            #
-#  Copyright (C) 2020  Nebu Mathews                                          #
-#                                                                            #
-#  This program is free software: you can redistribute it and/or modify      #
-#  it under the terms of the GNU General Public License as published by      #
-#  the Free Software Foundation, either version 3 of the License, or         #
-#  (at your option) any later version.                                       #
-#  This program is distributed in the hope that it will be useful,           #
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of            #
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
-#  GNU General Public License for more details.                              #
-#                                                                            #
-#  You should have received a copy of the GNU General Public License         #
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.    #
-#============================================================================#
-
+#===============================================================================================================
+# Author: Nebu Mathews, Project: Openstack, Repo: overcloud-management mail-to: nmathews@ukcloud.com
+#===============================================================================================================
+#This script will cold migrate all SHUTOFF instances from this host.
+#
+# Argument 1 (Mandatory) : FQDN of the compute host.
+#
+# Usage Example:
+#	 ./cold_migrate_instances.sh ock00016i2.frn00006.cni.ukcloud.com
+#
+#===============================================================================================================
 function WaitForNSeconds(){
   if [[ -z "$1" ]]; then
     ITER=1
